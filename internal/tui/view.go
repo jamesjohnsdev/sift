@@ -43,25 +43,25 @@ func (m model) paneHeight() int {
 }
 
 func (m model) paneStyleFor(f focus, width int) lipgloss.Style {
-	style := paneStyle
+	style := m.styles.pane
 	if m.focus == f {
-		style = focusedPaneStyle
+		style = m.styles.focusedPane
 	}
 	return style.Width(width).Height(m.paneHeight())
 }
 
 func (m model) renderTagsPane() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("Tags") + "\n")
+	b.WriteString(m.styles.title.Render("Tags") + "\n")
 	for i, t := range m.tags {
 		line := t.name
 		if n := len(m.messages[t.name]); n > 0 {
 			line = fmt.Sprintf("%s (%d)", t.name, n)
 		}
 		if i == m.tagCursor {
-			b.WriteString(selectedItemStyle.Render(line) + "\n")
+			b.WriteString(m.styles.selectedItem.Render(line) + "\n")
 		} else {
-			b.WriteString(itemStyle.Render(line) + "\n")
+			b.WriteString(m.styles.item.Render(line) + "\n")
 		}
 	}
 	return m.paneStyleFor(focusTags, m.tagsWidth()).Render(b.String())
@@ -69,17 +69,17 @@ func (m model) renderTagsPane() string {
 
 func (m model) renderListPane() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render(m.currentTag()) + "\n")
+	b.WriteString(m.styles.title.Render(m.currentTag()) + "\n")
 	msgs := m.currentMessages()
 	if len(msgs) == 0 {
-		b.WriteString(mutedStyle.Render("(empty)"))
+		b.WriteString(m.styles.muted.Render("(empty)"))
 	}
 	for i, msg := range msgs {
 		line := fmt.Sprintf("%-20s %s", truncate(msg.from, 20), msg.subject)
 		if i == m.listCursor {
-			b.WriteString(selectedItemStyle.Render(line) + "\n")
+			b.WriteString(m.styles.selectedItem.Render(line) + "\n")
 		} else {
-			b.WriteString(itemStyle.Render(line) + "\n")
+			b.WriteString(m.styles.item.Render(line) + "\n")
 		}
 	}
 	return m.paneStyleFor(focusList, m.listWidth()).Render(b.String())
@@ -103,7 +103,7 @@ func (m model) renderStatusBar() string {
 	if gap < 1 {
 		gap = 1
 	}
-	return statusBarStyle.Width(m.width).Render(left + strings.Repeat(" ", gap) + right)
+	return m.styles.statusBar.Width(m.width).Render(left + strings.Repeat(" ", gap) + right)
 }
 
 func truncate(s string, n int) string {

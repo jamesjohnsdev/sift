@@ -1,9 +1,12 @@
 package tui
 
-import "charm.land/bubbles/v2/key"
+import (
+	"charm.land/bubbles/v2/key"
 
-// KeyMap is a plain struct of bindings so a future config loader can
-// rebuild one from user overrides.
+	"github.com/jamesjohnsdev/sift/internal/config"
+)
+
+// KeyMap is a plain struct of bindings built from config.Keymap.
 type KeyMap struct {
 	Up         key.Binding
 	Down       key.Binding
@@ -14,35 +17,17 @@ type KeyMap struct {
 	Quit       key.Binding
 }
 
-func DefaultKeyMap() KeyMap {
+func newKeyMap(km config.Keymap) KeyMap {
+	bind := func(keys []string, help string) key.Binding {
+		return key.NewBinding(key.WithKeys(keys...), key.WithHelp(keys[0], help))
+	}
 	return KeyMap{
-		Up: key.NewBinding(
-			key.WithKeys("k", "up"),
-			key.WithHelp("k", "up"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("j", "down"),
-			key.WithHelp("j", "down"),
-		),
-		Top: key.NewBinding(
-			key.WithKeys("g"),
-			key.WithHelp("gg", "top"),
-		),
-		Bottom: key.NewBinding(
-			key.WithKeys("G"),
-			key.WithHelp("G", "bottom"),
-		),
-		FocusLeft: key.NewBinding(
-			key.WithKeys("h", "left"),
-			key.WithHelp("h", "focus left"),
-		),
-		FocusRight: key.NewBinding(
-			key.WithKeys("l", "right"),
-			key.WithHelp("l", "focus right"),
-		),
-		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c"),
-			key.WithHelp("q", "quit"),
-		),
+		Up:         bind(km.Up, "up"),
+		Down:       bind(km.Down, "down"),
+		Top:        bind(km.Top, "top"),
+		Bottom:     bind(km.Bottom, "bottom"),
+		FocusLeft:  bind(km.FocusLeft, "focus left"),
+		FocusRight: bind(km.FocusRight, "focus right"),
+		Quit:       bind(km.Quit, "quit"),
 	}
 }

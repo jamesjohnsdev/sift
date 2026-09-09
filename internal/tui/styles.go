@@ -1,43 +1,48 @@
 package tui
 
-import "charm.land/lipgloss/v2"
+import (
+	"charm.land/lipgloss/v2"
 
-// Hardcoded Tokyo Night palette, standing in for the future theme system.
-var (
-	colorFg       = lipgloss.Color("#c0caf5")
-	colorMuted    = lipgloss.Color("#565f89")
-	colorBorder   = lipgloss.Color("#414868")
-	colorAccent   = lipgloss.Color("#7aa2f7")
-	colorSelectBg = lipgloss.Color("#283457")
-	colorStatusBg = lipgloss.Color("#24283b")
+	"github.com/jamesjohnsdev/sift/internal/config"
 )
 
-var (
-	paneStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colorBorder).
-			Padding(0, 1)
+type styles struct {
+	pane         lipgloss.Style
+	focusedPane  lipgloss.Style
+	title        lipgloss.Style
+	item         lipgloss.Style
+	selectedItem lipgloss.Style
+	muted        lipgloss.Style
+	statusBar    lipgloss.Style
+}
 
-	focusedPaneStyle = paneStyle.
-				BorderForeground(colorAccent)
+func newStyles(t config.Theme) styles {
+	fg := lipgloss.Color(t.Fg)
+	border := lipgloss.Color(t.Border)
+	accent := lipgloss.Color(t.Accent)
 
-	titleStyle = lipgloss.NewStyle().
-			Foreground(colorAccent).
-			Bold(true)
+	pane := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(border).
+		Padding(0, 1)
 
-	itemStyle = lipgloss.NewStyle().
-			Foreground(colorFg)
-
-	selectedItemStyle = lipgloss.NewStyle().
-				Foreground(colorFg).
-				Background(colorSelectBg).
-				Bold(true)
-
-	mutedStyle = lipgloss.NewStyle().
-			Foreground(colorMuted)
-
-	statusBarStyle = lipgloss.NewStyle().
-			Foreground(colorFg).
-			Background(colorStatusBg).
-			Padding(0, 1)
-)
+	return styles{
+		pane:        pane,
+		focusedPane: pane.BorderForeground(accent),
+		title: lipgloss.NewStyle().
+			Foreground(accent).
+			Bold(true),
+		item: lipgloss.NewStyle().
+			Foreground(fg),
+		selectedItem: lipgloss.NewStyle().
+			Foreground(fg).
+			Background(lipgloss.Color(t.SelectBg)).
+			Bold(true),
+		muted: lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.Muted)),
+		statusBar: lipgloss.NewStyle().
+			Foreground(fg).
+			Background(lipgloss.Color(t.StatusBg)).
+			Padding(0, 1),
+	}
+}
