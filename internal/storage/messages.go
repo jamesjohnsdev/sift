@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,12 +13,12 @@ import (
 
 // UpsertMessages replaces the given messages, their tag associations,
 // attachments, and search index entries in a single transaction.
-func (s *Store) UpsertMessages(ctx context.Context, account provider.AccountID, msgs []provider.Message) error {
+func (s *Store) UpsertMessages(ctx context.Context, account provider.AccountID, msgs []provider.Message) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { err = errors.Join(err, rollback(tx)) }()
 
 	for _, m := range msgs {
 		if err := upsertMessage(ctx, tx, account, m); err != nil {
@@ -93,7 +94,7 @@ func upsertMessage(ctx context.Context, tx *sql.Tx, account provider.AccountID, 
 // Messages returns a page of messages carrying tag, newest first. Pass a
 // zero before to fetch the most recent page; pass the oldest date seen on
 // the previous page to fetch the next one.
-func (s *Store) Messages(ctx context.Context, account provider.AccountID, tag provider.TagID, limit int, before time.Time) ([]provider.Message, error) {
+func (s *Store) Messages(ctx context.Context, account provider.AccountID, tag provider.TagID, limit int, before time.Time) (_ []provider.Message, err error) {
 	query := `
 		SELECT m.id, m.thread_id, m.from_addr, m.to_addrs, m.cc_addrs, m.subject, m.date, m.snippet, m.body_text, m.body_html
 		FROM messages m
@@ -111,7 +112,7 @@ func (s *Store) Messages(ctx context.Context, account provider.AccountID, tag pr
 	if err != nil {
 		return nil, fmt.Errorf("list messages: %w", err)
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 
 	msgs, err := scanMessages(rows)
 	if err != nil {
@@ -123,7 +124,7 @@ func (s *Store) Messages(ctx context.Context, account provider.AccountID, tag pr
 	return msgs, nil
 }
 
-func (s *Store) Message(ctx context.Context, account provider.AccountID, id provider.MessageID) (*provider.Message, error) {
+func (s *Store) Message(ctx context.Context, account provider.AccountID, id provider.MessageID) (_ *provider.Message, err error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, thread_id, from_addr, to_addrs, cc_addrs, subject, date, snippet, body_text, body_html
 		FROM messages WHERE account_id = ? AND id = ?`, account, id)
@@ -146,7 +147,7 @@ func (s *Store) Message(ctx context.Context, account provider.AccountID, id prov
 	if err != nil {
 		return nil, fmt.Errorf("list attachments: %w", err)
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 	for rows.Next() {
 		var a provider.Attachment
 		if err := rows.Scan(&a.ID, &a.Filename, &a.MIMEType, &a.Size); err != nil {
@@ -159,7 +160,7 @@ func (s *Store) Message(ctx context.Context, account provider.AccountID, id prov
 }
 
 // Search runs the local full-text index (the default, non "srv:" search).
-func (s *Store) Search(ctx context.Context, account provider.AccountID, query string, limit int) ([]provider.Message, error) {
+func (s *Store) Search(ctx context.Context, account provider.AccountID, query string, limit int) (_ []provider.Message, err error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT m.id, m.thread_id, m.from_addr, m.to_addrs, m.cc_addrs, m.subject, m.date, m.snippet, m.body_text, m.body_html
 		FROM messages_fts f
@@ -169,7 +170,7 @@ func (s *Store) Search(ctx context.Context, account provider.AccountID, query st
 	if err != nil {
 		return nil, fmt.Errorf("search messages: %w", err)
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 
 	msgs, err := scanMessages(rows)
 	if err != nil {
@@ -214,7 +215,7 @@ func scanMessage(scan func(...any) error) (provider.Message, error) {
 
 // attachTags fills in each message's Tags field with one query rather than
 // one per message.
-func (s *Store) attachTags(ctx context.Context, account provider.AccountID, msgs []provider.Message) error {
+func (s *Store) attachTags(ctx context.Context, account provider.AccountID, msgs []provider.Message) (err error) {
 	if len(msgs) == 0 {
 		return nil
 	}
@@ -236,7 +237,7 @@ func (s *Store) attachTags(ctx context.Context, account provider.AccountID, msgs
 	if err != nil {
 		return fmt.Errorf("load message tags: %w", err)
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 
 	byMessage := make(map[provider.MessageID][]provider.TagID)
 	for rows.Next() {

@@ -5,6 +5,7 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	_ "modernc.org/sqlite"
@@ -22,15 +23,13 @@ func Open(path string) (*Store, error) {
 
 	for _, pragma := range []string{"PRAGMA foreign_keys = ON", "PRAGMA journal_mode = WAL"} {
 		if _, err := db.Exec(pragma); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("set pragma: %w", err)
+			return nil, errors.Join(fmt.Errorf("set pragma: %w", err), db.Close())
 		}
 	}
 
 	for _, stmt := range schema {
 		if _, err := db.Exec(stmt); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("apply schema: %w", err)
+			return nil, errors.Join(fmt.Errorf("apply schema: %w", err), db.Close())
 		}
 	}
 
@@ -39,4 +38,13 @@ func Open(path string) (*Store, error) {
 
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// rollback is deferred after BeginTx. sql.ErrTxDone from calling it after a
+// successful Commit is expected and not a real error.
+func rollback(tx *sql.Tx) error {
+	if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+		return err
+	}
+	return nil
 }

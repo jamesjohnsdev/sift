@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jamesjohnsdev/sift/internal/provider"
@@ -24,12 +25,12 @@ func (s *Store) UpsertAccount(ctx context.Context, a Account) error {
 	return nil
 }
 
-func (s *Store) Accounts(ctx context.Context) ([]Account, error) {
+func (s *Store) Accounts(ctx context.Context) (_ []Account, err error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, kind, email FROM accounts ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("list accounts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 
 	var accounts []Account
 	for rows.Next() {

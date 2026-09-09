@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -78,14 +79,14 @@ func (s *Store) Enqueue(ctx context.Context, account provider.AccountID, draft p
 }
 
 // Pending returns queued sends still worth retrying, oldest first.
-func (s *Store) Pending(ctx context.Context, account provider.AccountID) ([]OutboxEntry, error) {
+func (s *Store) Pending(ctx context.Context, account provider.AccountID) (_ []OutboxEntry, err error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, draft_json, attempts, last_error FROM outbox
 		WHERE account_id = ? AND status = ? ORDER BY created_at`, account, OutboxPending)
 	if err != nil {
 		return nil, fmt.Errorf("list outbox: %w", err)
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 
 	var entries []OutboxEntry
 	for rows.Next() {
