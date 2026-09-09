@@ -2,8 +2,8 @@ package tui
 
 import "github.com/charmbracelet/bubbles/key"
 
-// KeyMap is the default vim-flavored keymap, a plain struct of key.Binding
-// values so a future config loader can rebuild one from user overrides.
+// KeyMap is a plain struct of bindings so a future config loader can
+// rebuild one from user overrides.
 type KeyMap struct {
 	Up         key.Binding
 	Down       key.Binding

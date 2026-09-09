@@ -11,7 +11,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// Run starts the Bubble Tea program.
 func Run() error {
 	_, err := tea.NewProgram(newModel(), tea.WithAltScreen()).Run()
 	return err
