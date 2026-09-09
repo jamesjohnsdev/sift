@@ -6,13 +6,13 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 )
 
 func Run() error {
-	_, err := tea.NewProgram(newModel(), tea.WithAltScreen()).Run()
+	_, err := tea.NewProgram(newModel()).Run()
 	return err
 }
 
@@ -50,7 +50,7 @@ func newModel() model {
 		tags:     tags,
 		messages: msgs,
 		focus:    focusTags,
-		preview:  viewport.New(0, 0),
+		preview:  viewport.New(),
 	}
 	m.syncPreview()
 	return m
@@ -65,17 +65,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.preview.Width = m.previewWidth()
-		m.preview.Height = m.paneHeight()
+		m.preview.SetWidth(m.previewWidth())
+		m.preview.SetHeight(m.paneHeight())
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	}
 	return m, nil
 }
 
-func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// gg is the only two-key sequence; everything else clears it.
 	if m.pendingG {
 		m.pendingG = false

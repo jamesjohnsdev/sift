@@ -1,10 +1,9 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
 // Hardcoded Tokyo Night palette, standing in for the future theme system.
-const (
-	colorBg       = lipgloss.Color("#1a1b26")
+var (
 	colorFg       = lipgloss.Color("#c0caf5")
 	colorMuted    = lipgloss.Color("#565f89")
 	colorBorder   = lipgloss.Color("#414868")

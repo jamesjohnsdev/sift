@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/charmbracelet/bubbles/key"
+import "charm.land/bubbles/v2/key"
 
 // KeyMap is a plain struct of bindings so a future config loader can
 // rebuild one from user overrides.

@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 const statusBarHeight = 1
 
-func (m model) View() string {
+func (m model) View() tea.View {
 	if m.width == 0 {
-		return ""
+		return tea.NewView("")
 	}
 
 	tags := m.renderTagsPane()
@@ -19,7 +20,11 @@ func (m model) View() string {
 	preview := m.renderPreviewPane()
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, tags, list, preview)
-	return lipgloss.JoinVertical(lipgloss.Left, body, m.renderStatusBar())
+	content := lipgloss.JoinVertical(lipgloss.Left, body, m.renderStatusBar())
+
+	v := tea.NewView(content)
+	v.AltScreen = true
+	return v
 }
 
 // Fixed 20/30/50 column split; configurable layouts come later.
