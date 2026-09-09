@@ -9,10 +9,12 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/jamesjohnsdev/sift/internal/config"
 )
 
-func Run() error {
-	_, err := tea.NewProgram(newModel()).Run()
+func Run(cfg config.Config) error {
+	_, err := tea.NewProgram(newModel(cfg)).Run()
 	return err
 }
 
@@ -25,7 +27,8 @@ const (
 )
 
 type model struct {
-	keys KeyMap
+	keys   KeyMap
+	styles styles
 
 	tags     []tag
 	messages map[string][]message
@@ -41,12 +44,13 @@ type model struct {
 	height int
 }
 
-func newModel() model {
+func newModel(cfg config.Config) model {
 	tags := placeholderTags()
 	msgs := placeholderMessages()
 
 	m := model{
-		keys:     DefaultKeyMap(),
+		keys:     newKeyMap(cfg.Keymap),
+		styles:   newStyles(cfg.Theme),
 		tags:     tags,
 		messages: msgs,
 		focus:    focusTags,
@@ -67,8 +71,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		// The viewport has no border of its own; the outer pane style adds
 		// one, so give the viewport only the content area within it.
-		m.preview.SetWidth(m.previewWidth() - paneStyle.GetHorizontalFrameSize())
-		m.preview.SetHeight(m.paneHeight() - paneStyle.GetVerticalFrameSize())
+		m.preview.SetWidth(m.previewWidth() - m.styles.pane.GetHorizontalFrameSize())
+		m.preview.SetHeight(m.paneHeight() - m.styles.pane.GetVerticalFrameSize())
 		return m, nil
 
 	case tea.KeyPressMsg:
