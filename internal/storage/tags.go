@@ -2,17 +2,18 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jamesjohnsdev/sift/internal/provider"
 )
 
-func (s *Store) UpsertTags(ctx context.Context, account provider.AccountID, tags []provider.Tag) error {
+func (s *Store) UpsertTags(ctx context.Context, account provider.AccountID, tags []provider.Tag) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { err = errors.Join(err, rollback(tx)) }()
 
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO tags (account_id, id, name, special) VALUES (?, ?, ?, ?)
@@ -20,7 +21,7 @@ func (s *Store) UpsertTags(ctx context.Context, account provider.AccountID, tags
 	if err != nil {
 		return fmt.Errorf("prepare tag upsert: %w", err)
 	}
-	defer stmt.Close()
+	defer func() { err = errors.Join(err, stmt.Close()) }()
 
 	for _, t := range tags {
 		if _, err := stmt.ExecContext(ctx, account, t.ID, t.Name, t.Special); err != nil {
@@ -30,13 +31,13 @@ func (s *Store) UpsertTags(ctx context.Context, account provider.AccountID, tags
 	return tx.Commit()
 }
 
-func (s *Store) Tags(ctx context.Context, account provider.AccountID) ([]provider.Tag, error) {
+func (s *Store) Tags(ctx context.Context, account provider.AccountID) (_ []provider.Tag, err error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, name, special FROM tags WHERE account_id = ? ORDER BY name`, account)
 	if err != nil {
 		return nil, fmt.Errorf("list tags: %w", err)
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 
 	var tags []provider.Tag
 	for rows.Next() {
