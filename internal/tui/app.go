@@ -65,8 +65,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.preview.SetWidth(m.previewWidth())
-		m.preview.SetHeight(m.paneHeight())
+		// The viewport has no border of its own; the outer pane style adds
+		// one, so give the viewport only the content area within it.
+		m.preview.SetWidth(m.previewWidth() - paneStyle.GetHorizontalFrameSize())
+		m.preview.SetHeight(m.paneHeight() - paneStyle.GetVerticalFrameSize())
 		return m, nil
 
 	case tea.KeyPressMsg:

@@ -32,8 +32,10 @@ func (m model) tagsWidth() int    { return m.width * 20 / 100 }
 func (m model) listWidth() int    { return m.width * 30 / 100 }
 func (m model) previewWidth() int { return m.width - m.tagsWidth() - m.listWidth() }
 
+// paneHeight is the total per-pane box height (border included) that fits
+// the terminal alongside the status bar.
 func (m model) paneHeight() int {
-	h := m.height - statusBarHeight - 2 // borders
+	h := m.height - statusBarHeight
 	if h < 0 {
 		return 0
 	}
@@ -45,7 +47,7 @@ func (m model) paneStyleFor(f focus, width int) lipgloss.Style {
 	if m.focus == f {
 		style = focusedPaneStyle
 	}
-	return style.Width(width - 2).Height(m.paneHeight())
+	return style.Width(width).Height(m.paneHeight())
 }
 
 func (m model) renderTagsPane() string {
