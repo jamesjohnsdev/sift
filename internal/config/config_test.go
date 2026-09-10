@@ -97,3 +97,35 @@ func TestLoadMustReturnATable(t *testing.T) {
 		t.Fatal("Load: expected error when script doesn't return a table, got nil")
 	}
 }
+
+func TestLoadAccounts(t *testing.T) {
+	path := writeInit(t, `return {
+		accounts = {
+			{ id = "work", kind = "gmail", email = "me@example.com", client_id = "abc" },
+			{ id = "personal", kind = "outlook", email = "me@outlook.com" },
+		},
+	}`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(cfg.Accounts) != 2 {
+		t.Fatalf("Accounts = %+v, want 2", cfg.Accounts)
+	}
+	want := Account{ID: "work", Kind: "gmail", Email: "me@example.com", ClientID: "abc"}
+	if cfg.Accounts[0] != want {
+		t.Fatalf("Accounts[0] = %+v, want %+v", cfg.Accounts[0], want)
+	}
+	if cfg.Accounts[1].ID != "personal" || cfg.Accounts[1].ClientID != "" {
+		t.Fatalf("Accounts[1] = %+v", cfg.Accounts[1])
+	}
+}
+
+func TestLoadAccountMissingID(t *testing.T) {
+	path := writeInit(t, `return { accounts = { { kind = "gmail" } } }`)
+
+	if _, err := Load(path); err == nil {
+		t.Fatal("Load: expected error for account missing id, got nil")
+	}
+}

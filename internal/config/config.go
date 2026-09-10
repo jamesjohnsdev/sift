@@ -10,8 +10,9 @@ import (
 )
 
 type Config struct {
-	Theme  Theme
-	Keymap Keymap
+	Theme    Theme
+	Keymap   Keymap
+	Accounts []Account
 }
 
 func Default() Config {
@@ -58,6 +59,14 @@ func Load(path string) (Config, error) {
 			return cfg, err
 		}
 		cfg.Keymap = cfg.Keymap.overrideFrom(km)
+	}
+
+	if t, ok := tableTable(tbl, "accounts"); ok {
+		accounts, err := parseAccounts(t)
+		if err != nil {
+			return cfg, err
+		}
+		cfg.Accounts = accounts
 	}
 
 	return cfg, nil
