@@ -3,6 +3,7 @@
 package outlook
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -68,6 +69,35 @@ func (p *Provider) getJSON(ctx context.Context, path string, out any) (err error
 
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
 		return fmt.Errorf("decode graph response: %w", err)
+	}
+	return nil
+}
+
+// postJSON issues a POST against the Graph API with a JSON-encoded body.
+// Graph mail actions (like sendMail) return 202 Accepted with an empty
+// body on success, so any 2xx status is treated as success and the
+// response body is only read for the error path.
+func (p *Provider) postJSON(ctx context.Context, path string, body any) (err error) {
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+path, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("graph request: %w", err)
+	}
+	defer func() { err = errors.Join(err, resp.Body.Close()) }()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return fmt.Errorf("graph request to %s: status %d: %s", path, resp.StatusCode, respBody)
 	}
 	return nil
 }
