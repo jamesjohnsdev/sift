@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.3](https://github.com/jamesjohnsdev/sift/compare/v0.1.2...v0.1.3) (2026-09-10)
+
+
+### Features
+
+* add 'sift account add' CLI command ([63c2f58](https://github.com/jamesjohnsdev/sift/commit/63c2f58af740aab27d234f79d6791ab9a2e2030f))
+* add account config to Lua loader ([5e04fa9](https://github.com/jamesjohnsdev/sift/commit/5e04fa9840177d1a977fbb8b3894fa67bb9653ae))
+* add compose/reply keymap actions ([b07ceda](https://github.com/jamesjohnsdev/sift/commit/b07cedadcba58d951fc5a118d5237848f4c96cfa))
+* add compose/reply screen to the TUI ([3402057](https://github.com/jamesjohnsdev/sift/commit/3402057e570f357ccb0becefb507b9d95812b737))
+* add Kong CLI with man page generation ([7134ef3](https://github.com/jamesjohnsdev/sift/commit/7134ef3c16c19a2ddf75918828a8f9fe4db93c59))
+* add Manager.Send for composing new mail ([9288ec2](https://github.com/jamesjohnsdev/sift/commit/9288ec2421005770dfc1ffc16a0da85538af32c0))
+* add sync engine ([0e338bf](https://github.com/jamesjohnsdev/sift/commit/0e338bfb0d9c9eec739f4141960416d7f648aa3e))
+* add sync engine update notification channel ([fac7f05](https://github.com/jamesjohnsdev/sift/commit/fac7f05b5d1d1596ee099d7bc97504bfcab66275))
+* wire tui and main to storage.Store and the sync engine ([baf5877](https://github.com/jamesjohnsdev/sift/commit/baf5877818b2f60bd3335a92ea6fe390f6989c5b))
+* wire tui to reload on sync engine updates ([b1a1de2](https://github.com/jamesjohnsdev/sift/commit/b1a1de2e5661345adb0850e2726c5b4d1b68ef62))
+
+
+### Bug Fixes
+
+* include body in Outlook's message list select ([003b97b](https://github.com/jamesjohnsdev/sift/commit/003b97b0df11be746a37051e35b903a77b8425a9))
+* reject wrong-type account fields instead of silently emptying them ([fc22d57](https://github.com/jamesjohnsdev/sift/commit/fc22d57221e6b91e862ad838a052e02b6883adb2))
+* use per-provider loopback redirect host, drop path ([5230b24](https://github.com/jamesjohnsdev/sift/commit/5230b24805038914f513821da6ba648a93f1c054))
+
 ## [0.1.2](https://github.com/jamesjohnsdev/sift/compare/v0.1.1...v0.1.2) (2026-09-10)
 
 
