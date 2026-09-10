@@ -67,6 +67,48 @@ func (m *Manager) signalUpdate() {
 	}
 }
 
+// authenticatedProvider loads acc's token and builds its provider - the
+// shared first step of both syncing and sending.
+func (m *Manager) authenticatedProvider(ctx context.Context, acc config.Account) (provider.Provider, error) {
+	tok, err := auth.LoadToken(acc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("account %s: load token: %w", acc.ID, err)
+	}
+	if tok == nil {
+		return nil, fmt.Errorf("account %s: not authenticated yet", acc.ID)
+	}
+
+	p, err := m.newProvider(ctx, acc, tok)
+	if err != nil {
+		return nil, fmt.Errorf("account %s: build provider: %w", acc.ID, err)
+	}
+	return p, nil
+}
+
+func (m *Manager) accountByID(id provider.AccountID) (config.Account, bool) {
+	for _, acc := range m.accounts {
+		if acc.ID == string(id) {
+			return acc, true
+		}
+	}
+	return config.Account{}, false
+}
+
+// Send authenticates accountID's provider and sends draft through it.
+// Matches tui.SendFunc's signature so it can be passed straight through.
+func (m *Manager) Send(ctx context.Context, accountID provider.AccountID, draft provider.Draft) error {
+	acc, ok := m.accountByID(accountID)
+	if !ok {
+		return fmt.Errorf("account %s: not configured", accountID)
+	}
+
+	p, err := m.authenticatedProvider(ctx, acc)
+	if err != nil {
+		return err
+	}
+	return p.Send(ctx, draft)
+}
+
 // SyncAccount loads acc's token, builds its provider, and pulls the
 // account's tags plus the first page of each tag's messages into
 // storage. It does not paginate or backfill further history - that's a
@@ -80,17 +122,9 @@ func (m *Manager) SyncAccount(ctx context.Context, acc config.Account) error {
 // built provider so Start can hand it straight to watch without
 // re-authenticating and re-constructing it.
 func (m *Manager) syncAccount(ctx context.Context, acc config.Account) (provider.Provider, error) {
-	tok, err := auth.LoadToken(acc.ID)
+	p, err := m.authenticatedProvider(ctx, acc)
 	if err != nil {
-		return nil, fmt.Errorf("account %s: load token: %w", acc.ID, err)
-	}
-	if tok == nil {
-		return nil, fmt.Errorf("account %s: not authenticated yet", acc.ID)
-	}
-
-	p, err := m.newProvider(ctx, acc, tok)
-	if err != nil {
-		return nil, fmt.Errorf("account %s: build provider: %w", acc.ID, err)
+		return nil, err
 	}
 
 	accountID := provider.AccountID(acc.ID)
