@@ -40,7 +40,13 @@ func (m model) renderCompose() string {
 	fmt.Fprintf(&b, "%s %s\n", m.styles.muted.Render("Cc:     "), c.cc.View())
 	fmt.Fprintf(&b, "%s %s\n", m.styles.muted.Render("Bcc:    "), c.bcc.View())
 	fmt.Fprintf(&b, "%s %s\n\n", m.styles.muted.Render("Subject:"), c.subject.View())
-	b.WriteString(c.body.View() + "\n\n")
+
+	editor := lipgloss.JoinVertical(lipgloss.Left, m.styles.muted.Render("Body (Markdown)"), c.body.View())
+	preview := lipgloss.JoinVertical(lipgloss.Left,
+		m.styles.muted.Render("Preview"),
+		renderMarkdown(m.theme, c.body.Width(), c.body.Value()))
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, editor, "   ", preview))
+	b.WriteString("\n\n")
 
 	if c.status != "" {
 		b.WriteString(m.styles.muted.Render(c.status) + "\n")
