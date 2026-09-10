@@ -47,13 +47,9 @@ func main() {
 }
 
 func runTUI() error {
-	appDir, err := os.UserConfigDir()
+	appDir, err := config.Dir()
 	if err != nil {
-		return fmt.Errorf("resolve config dir: %w", err)
-	}
-	appDir = filepath.Join(appDir, "sift")
-	if err := os.MkdirAll(appDir, 0o700); err != nil {
-		return fmt.Errorf("create config dir: %w", err)
+		return err
 	}
 
 	cfg, err := config.Load(filepath.Join(appDir, "init.lua"))
