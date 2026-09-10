@@ -11,7 +11,11 @@ import (
 
 const pageSize = 50
 
-const messageSelect = "id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,parentFolderId"
+// messageSelect includes body so Messages/Search get full content in the
+// same call - Graph's $select works on list endpoints too, so this is
+// still one round trip, unlike Gmail's list endpoint which only returns
+// IDs and needs a follow-up fetch per message (see gmail/messages.go).
+const messageSelect = "id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,parentFolderId,body"
 
 type emailAddress struct {
 	Name    string `json:"name"`
@@ -76,7 +80,7 @@ func (p *Provider) Search(ctx context.Context, query string) ([]provider.Message
 }
 
 func (p *Provider) Message(ctx context.Context, id provider.MessageID) (*provider.Message, error) {
-	q := url.Values{"$select": {messageSelect + ",body"}}
+	q := url.Values{"$select": {messageSelect}}
 
 	var gm graphMessage
 	if err := p.getJSON(ctx, "/messages/"+url.PathEscape(string(id))+"?"+q.Encode(), &gm); err != nil {
