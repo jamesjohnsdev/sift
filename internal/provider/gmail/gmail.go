@@ -2,6 +2,7 @@
 package gmail
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -65,6 +66,45 @@ func (p *Provider) getJSON(ctx context.Context, path string, out any) (err error
 		return fmt.Errorf("gmail request to %s: status %d: %s", path, resp.StatusCode, body)
 	}
 
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("decode gmail response: %w", err)
+	}
+	return nil
+}
+
+// postJSON issues a POST against the Gmail API with a JSON-encoded body
+// and decodes the JSON response into out (which may be nil to discard it).
+func (p *Provider) postJSON(ctx context.Context, path string, body, out any) (err error) {
+	url := path
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = p.baseURL + path
+	}
+
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshal request body: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("gmail request: %w", err)
+	}
+	defer func() { err = errors.Join(err, resp.Body.Close()) }()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return fmt.Errorf("gmail request to %s: status %d: %s", path, resp.StatusCode, respBody)
+	}
+
+	if out == nil {
+		return nil
+	}
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
 		return fmt.Errorf("decode gmail response: %w", err)
 	}
