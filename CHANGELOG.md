@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/jamesjohnsdev/sift/compare/v0.1.4...v0.2.0) (2026-09-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **config:** init.lua must call sift.setup({ ... }); a file that still ends in `return { ... }` will now fail to load.
+
+### Features
+
+* **config:** switch init.lua to sift.setup({...}) convention ([8775ecc](https://github.com/jamesjohnsdev/sift/commit/8775eccda5c392f3169da82d8843562ca5d03fad))
+* **config:** validate init.lua fields and ship LuaLS stubs ([782e3eb](https://github.com/jamesjohnsdev/sift/commit/782e3ebe5a8816172baecc535efc863f76332fa5))
+
 ## [0.1.4](https://github.com/jamesjohnsdev/sift/compare/v0.1.3...v0.1.4) (2026-09-10)
 
 
