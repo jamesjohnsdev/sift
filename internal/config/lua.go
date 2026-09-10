@@ -6,24 +6,33 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-// runInit executes the Lua file at path and returns the table it returns
-// (`return { ... }`), the convention this whole config is built around.
+// runInit executes the Lua file at path and returns the options table it
+// passed to `sift.setup({ ... })`, the convention this whole config is
+// built around (mirrors Neovim plugins' `require("x").setup({ ... })`).
+// A file that never calls sift.setup is an error, so a stale/typo'd config
+// (e.g. an old `return { ... }`) fails loudly instead of loading nothing.
 func runInit(path string) (*lua.LTable, error) {
 	L := lua.NewState()
 	defer L.Close()
 
+	var opts *lua.LTable
+	var called bool
+
+	sift := L.NewTable()
+	L.SetGlobal("sift", sift)
+	L.SetField(sift, "setup", L.NewFunction(func(L *lua.LState) int {
+		opts = L.CheckTable(1)
+		called = true
+		return 0
+	}))
+
 	if err := L.DoFile(path); err != nil {
 		return nil, fmt.Errorf("run %s: %w", path, err)
 	}
-
-	if L.GetTop() == 0 {
-		return nil, fmt.Errorf("%s must end with `return { ... }`", path)
+	if !called {
+		return nil, fmt.Errorf("%s must call sift.setup({ ... })", path)
 	}
-	tbl, ok := L.Get(-1).(*lua.LTable)
-	if !ok {
-		return nil, fmt.Errorf("%s must return a table, got %s", path, L.Get(-1).Type())
-	}
-	return tbl, nil
+	return opts, nil
 }
 
 func tableString(tbl *lua.LTable, key string) (string, bool) {

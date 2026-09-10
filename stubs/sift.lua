@@ -4,18 +4,20 @@
 -- (see internal/config/lua.go's *Fields maps and internal/config/accounts.go,
 -- theme.go, keymap.go for the source of truth).
 --
--- Not loaded at runtime - point lua-language-server at this directory, e.g.
--- in a .luarc.json next to your init.lua:
+-- Not loaded at runtime - the `sift` global is injected by the sift binary
+-- itself before init.lua runs. This file exists purely so
+-- lua-language-server knows its shape: point it at this directory, e.g. in
+-- a .luarc.json next to your init.lua:
 --   { "workspace.library": ["/path/to/sift/stubs"] }
 --
--- Then annotate the return in init.lua:
---   ---@type SiftConfig
---   return {
+-- Then just call it - LuaLS annotates the call site directly, no
+-- annotation needed in your own init.lua:
+--   sift.setup({
 --     theme = "dracula",
 --     accounts = {
 --       { id = "work", kind = "gmail", email = "me@example.com", client_id = "..." },
 --     },
---   }
+--   })
 
 ---@alias SiftThemeName
 ---| "tokyo-night" # default
@@ -52,3 +54,8 @@
 ---@field theme? SiftThemeName|SiftTheme
 ---@field keymap? SiftKeymap
 ---@field accounts? SiftAccount[]
+
+sift = {}
+
+---@param opts SiftConfig
+function sift.setup(opts) end

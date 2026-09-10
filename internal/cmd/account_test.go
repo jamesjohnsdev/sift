@@ -105,7 +105,7 @@ func TestAddAccountDoesNotOverwriteExistingInitLua(t *testing.T) {
 	keyring.MockInit()
 	dir := t.TempDir()
 	initPath := filepath.Join(dir, "init.lua")
-	original := "return { theme = \"dracula\" }\n"
+	original := "sift.setup({ theme = \"dracula\" })\n"
 	if err := os.WriteFile(initPath, []byte(original), 0o600); err != nil {
 		t.Fatalf("seed init.lua: %v", err)
 	}
