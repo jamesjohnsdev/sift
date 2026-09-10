@@ -39,6 +39,7 @@ type Manager struct {
 	store       *storage.Store
 	accounts    []config.Account
 	newProvider ProviderFactory
+	updates     chan struct{}
 }
 
 // New builds a Manager. A nil newProvider defaults to
@@ -47,7 +48,23 @@ func New(store *storage.Store, accounts []config.Account, newProvider ProviderFa
 	if newProvider == nil {
 		newProvider = DefaultProviderFactory
 	}
-	return &Manager{store: store, accounts: accounts, newProvider: newProvider}
+	return &Manager{store: store, accounts: accounts, newProvider: newProvider, updates: make(chan struct{}, 1)}
+}
+
+// Updates receives a pulse whenever Watch writes new data to storage, so a
+// long-running consumer (the TUI) knows to reload. It's buffered and
+// coalescing: any number of writes between reads collapse into one pulse,
+// so a slow consumer never blocks Watch and never needs more than "reload,
+// something changed" - not what changed.
+func (m *Manager) Updates() <-chan struct{} {
+	return m.updates
+}
+
+func (m *Manager) signalUpdate() {
+	select {
+	case m.updates <- struct{}{}:
+	default:
+	}
 }
 
 // SyncAccount loads acc's token, builds its provider, and pulls the
@@ -144,6 +161,8 @@ func (m *Manager) watch(ctx context.Context, acc config.Account, p provider.Prov
 		}
 		if err := m.store.UpsertMessages(ctx, accountID, []provider.Message{*msg}); err != nil {
 			fmt.Fprintln(os.Stderr, "sift: account", acc.ID, "upsert message:", err)
+			continue
 		}
+		m.signalUpdate()
 	}
 }
