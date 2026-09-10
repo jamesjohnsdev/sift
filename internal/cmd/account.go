@@ -68,7 +68,7 @@ func addAccount(kind, email, clientID, id, dir string, authenticate authenticate
 	// init.lua risks clobbering the user's theme/keymap/other accounts
 	// without a real Lua parser+printer round trip, which we don't have.
 	if _, err := os.Stat(initPath); errors.Is(err, os.ErrNotExist) {
-		content := fmt.Sprintf("return {\n\taccounts = {\n\t\t%s,\n\t},\n}\n", entry)
+		content := fmt.Sprintf("sift.setup({\n\taccounts = {\n\t\t%s,\n\t},\n})\n", entry)
 		if err := os.WriteFile(initPath, []byte(content), 0o600); err != nil {
 			return fmt.Errorf("write %s: %w", initPath, err)
 		}

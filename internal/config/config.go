@@ -1,6 +1,6 @@
 // Package config loads sift's Lua configuration: a single init.lua that
-// returns a table of theme and keymap overrides, layered on top of
-// sensible built-in defaults.
+// calls sift.setup({ ... }) with theme, keymap, and account overrides,
+// layered on top of sensible built-in defaults.
 package config
 
 import (

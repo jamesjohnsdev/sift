@@ -28,7 +28,7 @@ func TestLoadMissingFileReturnsDefault(t *testing.T) {
 }
 
 func TestLoadBuiltinTheme(t *testing.T) {
-	path := writeInit(t, `return { theme = "dracula" }`)
+	path := writeInit(t, `sift.setup({ theme = "dracula" })`)
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -43,7 +43,7 @@ func TestLoadBuiltinTheme(t *testing.T) {
 }
 
 func TestLoadCustomThemeOverridesOnlyGivenFields(t *testing.T) {
-	path := writeInit(t, `return { theme = { accent = "#ff0000" } }`)
+	path := writeInit(t, `sift.setup({ theme = { accent = "#ff0000" } })`)
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -57,7 +57,7 @@ func TestLoadCustomThemeOverridesOnlyGivenFields(t *testing.T) {
 }
 
 func TestLoadUnknownThemeName(t *testing.T) {
-	path := writeInit(t, `return { theme = "not-a-theme" }`)
+	path := writeInit(t, `sift.setup({ theme = "not-a-theme" })`)
 
 	if _, err := Load(path); err == nil {
 		t.Fatal("Load: expected error for unknown theme name, got nil")
@@ -65,7 +65,7 @@ func TestLoadUnknownThemeName(t *testing.T) {
 }
 
 func TestLoadKeymapOverridesOnlyGivenActions(t *testing.T) {
-	path := writeInit(t, `return { keymap = { quit = {"x"} } }`)
+	path := writeInit(t, `sift.setup({ keymap = { quit = {"x"} } })`)
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -80,7 +80,7 @@ func TestLoadKeymapOverridesOnlyGivenActions(t *testing.T) {
 }
 
 func TestLoadKeymapComposeAndReply(t *testing.T) {
-	path := writeInit(t, `return { keymap = { compose = {"n"}, reply = {"shift+r"} } }`)
+	path := writeInit(t, `sift.setup({ keymap = { compose = {"n"}, reply = {"shift+r"} } })`)
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -106,21 +106,29 @@ func TestLoadInvalidLuaReturnsDefaultAndError(t *testing.T) {
 	}
 }
 
-func TestLoadMustReturnATable(t *testing.T) {
-	path := writeInit(t, `return "not a table"`)
+func TestLoadMustCallSetup(t *testing.T) {
+	path := writeInit(t, `local x = 1`)
 
 	if _, err := Load(path); err == nil {
-		t.Fatal("Load: expected error when script doesn't return a table, got nil")
+		t.Fatal("Load: expected error when script never calls sift.setup, got nil")
+	}
+}
+
+func TestLoadSetupArgMustBeTable(t *testing.T) {
+	path := writeInit(t, `sift.setup("not a table")`)
+
+	if _, err := Load(path); err == nil {
+		t.Fatal("Load: expected error when sift.setup is called with a non-table, got nil")
 	}
 }
 
 func TestLoadAccounts(t *testing.T) {
-	path := writeInit(t, `return {
+	path := writeInit(t, `sift.setup({
 		accounts = {
 			{ id = "work", kind = "gmail", email = "me@example.com", client_id = "abc" },
 			{ id = "personal", kind = "outlook", email = "me@outlook.com" },
 		},
-	}`)
+	})`)
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -139,7 +147,7 @@ func TestLoadAccounts(t *testing.T) {
 }
 
 func TestLoadAccountMissingID(t *testing.T) {
-	path := writeInit(t, `return { accounts = { { kind = "gmail" } } }`)
+	path := writeInit(t, `sift.setup({ accounts = { { kind = "gmail" } } })`)
 
 	if _, err := Load(path); err == nil {
 		t.Fatal("Load: expected error for account missing id, got nil")
@@ -150,7 +158,7 @@ func TestLoadAccountWrongFieldType(t *testing.T) {
 	// A table where a string is expected (e.g. a placeholder like
 	// { "..." } left in client_id) must fail loudly, not silently
 	// coerce to an empty string.
-	path := writeInit(t, `return { accounts = { { id = "x", client_id = { "..." } } } }`)
+	path := writeInit(t, `sift.setup({ accounts = { { id = "x", client_id = { "..." } } } })`)
 
 	if _, err := Load(path); err == nil {
 		t.Fatal("Load: expected error for non-string client_id, got nil")
@@ -160,7 +168,7 @@ func TestLoadAccountWrongFieldType(t *testing.T) {
 func TestLoadAccountUnknownField(t *testing.T) {
 	// A typo'd field name (e.g. "knd" instead of "kind") must error, not
 	// silently be ignored.
-	path := writeInit(t, `return { accounts = { { id = "x", knd = "gmail" } } }`)
+	path := writeInit(t, `sift.setup({ accounts = { { id = "x", knd = "gmail" } } })`)
 
 	_, err := Load(path)
 	if err == nil {
@@ -172,7 +180,7 @@ func TestLoadAccountUnknownField(t *testing.T) {
 }
 
 func TestLoadAccountUnknownKind(t *testing.T) {
-	path := writeInit(t, `return { accounts = { { id = "x", kind = "yahoo" } } }`)
+	path := writeInit(t, `sift.setup({ accounts = { { id = "x", kind = "yahoo" } } })`)
 
 	if _, err := Load(path); err == nil {
 		t.Fatal("Load: expected error for unknown account kind, got nil")
@@ -180,7 +188,7 @@ func TestLoadAccountUnknownKind(t *testing.T) {
 }
 
 func TestLoadTopLevelUnknownField(t *testing.T) {
-	path := writeInit(t, `return { theeme = "dracula" }`)
+	path := writeInit(t, `sift.setup({ theeme = "dracula" })`)
 
 	_, err := Load(path)
 	if err == nil {
@@ -192,7 +200,7 @@ func TestLoadTopLevelUnknownField(t *testing.T) {
 }
 
 func TestLoadThemeUnknownField(t *testing.T) {
-	path := writeInit(t, `return { theme = { accnt = "#ff0000" } }`)
+	path := writeInit(t, `sift.setup({ theme = { accnt = "#ff0000" } })`)
 
 	_, err := Load(path)
 	if err == nil {
@@ -204,7 +212,7 @@ func TestLoadThemeUnknownField(t *testing.T) {
 }
 
 func TestLoadKeymapUnknownField(t *testing.T) {
-	path := writeInit(t, `return { keymap = { qwit = {"x"} } }`)
+	path := writeInit(t, `sift.setup({ keymap = { qwit = {"x"} } })`)
 
 	_, err := Load(path)
 	if err == nil {
