@@ -48,6 +48,7 @@ const (
 type model struct {
 	keys   KeyMap
 	styles styles
+	theme  config.Theme
 
 	store   *storage.Store
 	updates <-chan struct{}
@@ -79,6 +80,7 @@ func newModel(cfg config.Config, store *storage.Store, updates <-chan struct{}, 
 	m := model{
 		keys:     newKeyMap(cfg.Keymap),
 		styles:   newStyles(cfg.Theme),
+		theme:    cfg.Theme,
 		store:    store,
 		updates:  updates,
 		send:     send,
@@ -122,6 +124,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// one, so give the viewport only the content area within it.
 		m.preview.SetWidth(m.previewWidth() - m.styles.pane.GetHorizontalFrameSize())
 		m.preview.SetHeight(m.paneHeight() - m.styles.pane.GetVerticalFrameSize())
+		// Content is rendered (word-wrapped) at SetContent time, not live by
+		// the viewport, so it must be redone now that the real width is known.
+		m.syncPreview()
 		// m.compose is only ever constructed (via newComposeModel/newReplyModel)
 		// once compose is actually opened; resizing it before that would hit an
 		// uninitialized textarea.Model.
@@ -362,13 +367,10 @@ func (m *model) syncPreview() {
 	m.preview.SetContent("")
 	if m.listCursor < len(msgs) {
 		msg := msgs[m.listCursor]
-		body := msg.BodyText
-		if body == "" {
-			body = msg.BodyHTML
-		}
-		content := fmt.Sprintf("From: %s\nSubject: %s\nDate: %s\n\n%s",
-			msg.From, msg.Subject, msg.Date.Format("2006-01-02 15:04"), body)
-		m.preview.SetContent(content)
+		header := fmt.Sprintf("From: %s\nSubject: %s\nDate: %s\n\n",
+			msg.From, msg.Subject, msg.Date.Format("2006-01-02 15:04"))
+		body := renderMessageBody(m.theme, m.preview.Width(), msg)
+		m.preview.SetContent(header + body)
 	}
 	m.preview.GotoTop()
 }
