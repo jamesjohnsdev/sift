@@ -18,9 +18,11 @@ import (
 
 // Run starts the TUI. updates, if non-nil, receives a pulse whenever
 // background sync writes new data to storage, so the running program
-// reloads instead of only ever showing what was there at startup.
-func Run(cfg config.Config, store *storage.Store, updates <-chan struct{}) error {
-	m, err := newModel(cfg, store, updates)
+// reloads instead of only ever showing what was there at startup. send
+// authenticates and dispatches a composed message through the right
+// account's provider.
+func Run(cfg config.Config, store *storage.Store, updates <-chan struct{}, send SendFunc) error {
+	m, err := newModel(cfg, store, updates, send)
 	if err != nil {
 		return err
 	}
@@ -36,12 +38,23 @@ const (
 	focusPreview
 )
 
+type mode int
+
+const (
+	modeInbox mode = iota
+	modeCompose
+)
+
 type model struct {
 	keys   KeyMap
 	styles styles
 
 	store   *storage.Store
 	updates <-chan struct{}
+	send    SendFunc
+
+	mode    mode
+	compose composeModel
 
 	tags     []tag
 	messages map[tagKey][]provider.Message
@@ -57,7 +70,7 @@ type model struct {
 	height int
 }
 
-func newModel(cfg config.Config, store *storage.Store, updates <-chan struct{}) (model, error) {
+func newModel(cfg config.Config, store *storage.Store, updates <-chan struct{}, send SendFunc) (model, error) {
 	tags, messages, err := loadData(context.Background(), store)
 	if err != nil {
 		return model{}, err
@@ -68,6 +81,7 @@ func newModel(cfg config.Config, store *storage.Store, updates <-chan struct{}) 
 		styles:   newStyles(cfg.Theme),
 		store:    store,
 		updates:  updates,
+		send:     send,
 		tags:     tags,
 		messages: messages,
 		focus:    focusTags,
@@ -108,16 +122,87 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// one, so give the viewport only the content area within it.
 		m.preview.SetWidth(m.previewWidth() - m.styles.pane.GetHorizontalFrameSize())
 		m.preview.SetHeight(m.paneHeight() - m.styles.pane.GetVerticalFrameSize())
+		// m.compose is only ever constructed (via newComposeModel/newReplyModel)
+		// once compose is actually opened; resizing it before that would hit an
+		// uninitialized textarea.Model.
+		if m.mode == modeCompose {
+			m.compose.applySize(m.width, m.height)
+		}
 		return m, nil
 
 	case tea.KeyPressMsg:
+		if m.mode == modeCompose {
+			return m.updateCompose(msg)
+		}
 		return m.handleKey(msg)
 
 	case refreshMsg:
 		m.reload()
 		return m, listenForUpdates(m.updates)
+
+	case composeSentMsg:
+		m.compose.sending = false
+		if msg.err != nil {
+			m.compose.status = "send failed: " + msg.err.Error()
+			return m, nil
+		}
+		m.mode = modeInbox
+		return m, nil
 	}
 	return m, nil
+}
+
+// updateCompose handles keys while the compose screen is open: a handful
+// of fixed keys (not user-remappable - these are modal to the sub-screen,
+// unlike the global nav bindings) plus everything else routed to whichever
+// field currently has focus.
+func (m model) updateCompose(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.mode = modeInbox
+		return m, nil
+
+	case "ctrl+s":
+		if m.compose.sending {
+			return m, nil
+		}
+		m.compose.sending = true
+		m.compose.status = "sending..."
+		return m, m.compose.submit()
+
+	case "tab":
+		m.compose.field = (m.compose.field + 1) % numComposeFields
+		m.compose.focusCurrent()
+		return m, nil
+
+	case "shift+tab":
+		m.compose.field = (m.compose.field - 1 + numComposeFields) % numComposeFields
+		m.compose.focusCurrent()
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.compose, cmd = m.compose.updateField(msg)
+	return m, cmd
+}
+
+// openCompose starts a blank message addressed from the currently
+// selected tag's account.
+func (m *model) openCompose() {
+	m.compose = newComposeModel(m.send, m.currentTagKey().account)
+	m.compose.applySize(m.width, m.height)
+	m.mode = modeCompose
+}
+
+// openReply starts a reply to the currently selected message, if any.
+func (m *model) openReply() {
+	msgs := m.currentMessages()
+	if m.listCursor >= len(msgs) {
+		return
+	}
+	m.compose = newReplyModel(m.send, m.currentTagKey().account, msgs[m.listCursor])
+	m.compose.applySize(m.width, m.height)
+	m.mode = modeCompose
 }
 
 // reload re-reads tags and messages from storage, trying to keep the
@@ -180,6 +265,14 @@ func (m model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.FocusRight):
 		m.cycleFocus(1)
+		return m, nil
+
+	case key.Matches(msg, m.keys.Compose):
+		m.openCompose()
+		return m, nil
+
+	case key.Matches(msg, m.keys.Reply):
+		m.openReply()
 		return m, nil
 	}
 	return m, nil
