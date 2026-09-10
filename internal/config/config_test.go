@@ -129,3 +129,14 @@ func TestLoadAccountMissingID(t *testing.T) {
 		t.Fatal("Load: expected error for account missing id, got nil")
 	}
 }
+
+func TestLoadAccountWrongFieldType(t *testing.T) {
+	// A table where a string is expected (e.g. a placeholder like
+	// { "..." } left in client_id) must fail loudly, not silently
+	// coerce to an empty string.
+	path := writeInit(t, `return { accounts = { { id = "x", client_id = { "..." } } } }`)
+
+	if _, err := Load(path); err == nil {
+		t.Fatal("Load: expected error for non-string client_id, got nil")
+	}
+}

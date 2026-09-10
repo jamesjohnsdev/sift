@@ -103,9 +103,16 @@ func parseAccounts(tbl *lua.LTable) ([]Account, error) {
 			return
 		}
 		a.ID = id
-		a.Kind, _ = tableString(t, "kind")
-		a.Email, _ = tableString(t, "email")
-		a.ClientID, _ = tableString(t, "client_id")
+
+		fields := map[string]*string{"kind": &a.Kind, "email": &a.Email, "client_id": &a.ClientID}
+		for key, dst := range fields {
+			if v, ok := tableString(t, key); ok {
+				*dst = v
+			} else if t.RawGetString(key) != lua.LNil {
+				rangeErr = fmt.Errorf("account %s: %s must be a string", a.ID, key)
+				return
+			}
+		}
 		accounts = append(accounts, a)
 	})
 	return accounts, rangeErr
