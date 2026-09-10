@@ -220,3 +220,69 @@ func TestWatchUpsertsNewMessage(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+func TestWatchSignalsUpdates(t *testing.T) {
+	keyring.MockInit()
+	if err := auth.SaveToken("acct-1", &oauth2.Token{AccessToken: "at"}); err != nil {
+		t.Fatalf("SaveToken: %v", err)
+	}
+
+	store := openTestStore(t)
+	fp := &fakeProvider{
+		account: "acct-1",
+		tags:    []provider.Tag{{ID: "inbox", Name: "Inbox"}},
+		msgs:    map[provider.TagID][]provider.Message{"inbox": {}},
+		byID: map[provider.MessageID]provider.Message{
+			"new-1": {ID: "new-1", Subject: "Fresh", Tags: []provider.TagID{"inbox"}},
+			"new-2": {ID: "new-2", Subject: "Fresher", Tags: []provider.TagID{"inbox"}},
+		},
+		updates: make(chan provider.Update, 2),
+	}
+	acc := config.Account{ID: "acct-1", Kind: "gmail"}
+	m := New(store, []config.Account{acc}, newFakeFactory(map[string]*fakeProvider{"acct-1": fp}))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	m.Start(ctx)
+
+	select {
+	case <-m.Updates():
+		t.Fatal("Updates fired before any Watch update was sent")
+	default:
+	}
+
+	// Two updates must still coalesce into one pending pulse, not queue up
+	// extra pulses. Wait for both to actually land in storage first, so
+	// both signalUpdate calls have definitely already happened - otherwise
+	// draining the first pulse as soon as it appears can race ahead of the
+	// second message's upsert+signal, making them look uncoalesced.
+	fp.updates <- provider.Update{Kind: provider.MessageAdded, MessageID: "new-1"}
+	fp.updates <- provider.Update{Kind: provider.MessageAdded, MessageID: "new-2"}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		msgs, err := store.Messages(context.Background(), "acct-1", "inbox", 10, time.Time{})
+		if err != nil {
+			t.Fatalf("Messages: %v", err)
+		}
+		if len(msgs) == 2 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("Messages = %+v, want both watched messages landed before checking coalescing", msgs)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	select {
+	case <-m.Updates():
+	default:
+		t.Fatal("Updates: expected a pending pulse after Watch upserted messages")
+	}
+
+	select {
+	case <-m.Updates():
+		t.Fatal("Updates: expected the two updates to coalesce into one pulse, got a second one")
+	default:
+	}
+}
