@@ -39,6 +39,10 @@ func Load(path string) (Config, error) {
 		return cfg, err
 	}
 
+	if bad := unknownField(tbl, topLevelFields); bad != "" {
+		return cfg, fmt.Errorf("%s: unknown field %q", path, bad)
+	}
+
 	if v, ok := tableString(tbl, "theme"); ok {
 		theme, ok := lookupTheme(v)
 		if !ok {

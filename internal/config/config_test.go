@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -153,5 +154,63 @@ func TestLoadAccountWrongFieldType(t *testing.T) {
 
 	if _, err := Load(path); err == nil {
 		t.Fatal("Load: expected error for non-string client_id, got nil")
+	}
+}
+
+func TestLoadAccountUnknownField(t *testing.T) {
+	// A typo'd field name (e.g. "knd" instead of "kind") must error, not
+	// silently be ignored.
+	path := writeInit(t, `return { accounts = { { id = "x", knd = "gmail" } } }`)
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load: expected error for unknown account field, got nil")
+	}
+	if !strings.Contains(err.Error(), "accounts[1]") || !strings.Contains(err.Error(), "knd") {
+		t.Fatalf("Load: error = %q, want it to name accounts[1] and the field \"knd\"", err.Error())
+	}
+}
+
+func TestLoadAccountUnknownKind(t *testing.T) {
+	path := writeInit(t, `return { accounts = { { id = "x", kind = "yahoo" } } }`)
+
+	if _, err := Load(path); err == nil {
+		t.Fatal("Load: expected error for unknown account kind, got nil")
+	}
+}
+
+func TestLoadTopLevelUnknownField(t *testing.T) {
+	path := writeInit(t, `return { theeme = "dracula" }`)
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load: expected error for unknown top-level field, got nil")
+	}
+	if !strings.Contains(err.Error(), "theeme") {
+		t.Fatalf("Load: error = %q, want it to name the field \"theeme\"", err.Error())
+	}
+}
+
+func TestLoadThemeUnknownField(t *testing.T) {
+	path := writeInit(t, `return { theme = { accnt = "#ff0000" } }`)
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load: expected error for unknown theme field, got nil")
+	}
+	if !strings.Contains(err.Error(), "accnt") {
+		t.Fatalf("Load: error = %q, want it to name the field \"accnt\"", err.Error())
+	}
+}
+
+func TestLoadKeymapUnknownField(t *testing.T) {
+	path := writeInit(t, `return { keymap = { qwit = {"x"} } }`)
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load: expected error for unknown keymap field, got nil")
+	}
+	if !strings.Contains(err.Error(), "qwit") {
+		t.Fatalf("Load: error = %q, want it to name the field \"qwit\"", err.Error())
 	}
 }

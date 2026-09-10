@@ -42,7 +42,24 @@ return {
 ```
 
 A bad config file fails loudly on stderr and falls back to defaults rather
-than refusing to start.
+than refusing to start. Error messages are shown which can be traced.
+
+### Editor autocomplete and type-checking
+
+`stubs/sift.lua` has LuaLS (`---@class`/`---@field`) annotations for the
+config shape. Point lua-language-server at it (e.g. a `.luarc.json` next to
+`init.lua` with `{"workspace.library": ["/path/to/sift/stubs"]}`), then
+annotate your config's return:
+
+```lua
+---@type SiftConfig
+return {
+  theme = "catppuccin",
+  ...
+}
+```
+
+and your editor will flag typos and wrong types before you run sift.
 
 ## Adding an account (manual, for now)
 
