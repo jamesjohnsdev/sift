@@ -13,6 +13,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.9
 	charm.land/lipgloss/v2 v2.0.6
 	github.com/google/uuid v1.6.0
+	github.com/yuin/goldmark v1.8.6
 	github.com/yuin/gopher-lua v1.1.2
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/oauth2 v0.37.0
