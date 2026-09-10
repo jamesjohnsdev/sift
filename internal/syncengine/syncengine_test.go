@@ -25,6 +25,9 @@ type fakeProvider struct {
 	msgs    map[provider.TagID][]provider.Message
 	byID    map[provider.MessageID]provider.Message
 	updates chan provider.Update
+
+	sendErr    error
+	sentDrafts []provider.Draft
 }
 
 var _ provider.Provider = (*fakeProvider)(nil)
@@ -50,7 +53,10 @@ func (f *fakeProvider) Attachment(ctx context.Context, msg provider.MessageID, a
 	return nil, errors.New("not implemented")
 }
 
-func (f *fakeProvider) Send(ctx context.Context, draft provider.Draft) error { return nil }
+func (f *fakeProvider) Send(ctx context.Context, draft provider.Draft) error {
+	f.sentDrafts = append(f.sentDrafts, draft)
+	return f.sendErr
+}
 
 func (f *fakeProvider) Search(ctx context.Context, query string) ([]provider.Message, error) {
 	return nil, nil
@@ -284,5 +290,62 @@ func TestWatchSignalsUpdates(t *testing.T) {
 	case <-m.Updates():
 		t.Fatal("Updates: expected the two updates to coalesce into one pulse, got a second one")
 	default:
+	}
+}
+
+func TestManagerSend(t *testing.T) {
+	keyring.MockInit()
+	if err := auth.SaveToken("acct-1", &oauth2.Token{AccessToken: "at"}); err != nil {
+		t.Fatalf("SaveToken: %v", err)
+	}
+
+	store := openTestStore(t)
+	fp := &fakeProvider{account: "acct-1"}
+	acc := config.Account{ID: "acct-1", Kind: "gmail"}
+	m := New(store, []config.Account{acc}, newFakeFactory(map[string]*fakeProvider{"acct-1": fp}))
+
+	draft := provider.Draft{To: []string{"bob@example.com"}, Subject: "hi"}
+	if err := m.Send(context.Background(), "acct-1", draft); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if len(fp.sentDrafts) != 1 || fp.sentDrafts[0].Subject != "hi" {
+		t.Fatalf("sentDrafts = %+v, want [%+v]", fp.sentDrafts, draft)
+	}
+}
+
+func TestManagerSendUnknownAccount(t *testing.T) {
+	keyring.MockInit()
+	store := openTestStore(t)
+	m := New(store, nil, newFakeFactory(nil))
+
+	if err := m.Send(context.Background(), "nope", provider.Draft{}); err == nil {
+		t.Fatal("Send: expected error for an account not in config, got nil")
+	}
+}
+
+func TestManagerSendNoToken(t *testing.T) {
+	keyring.MockInit()
+	store := openTestStore(t)
+	acc := config.Account{ID: "acct-no-token", Kind: "gmail"}
+	m := New(store, []config.Account{acc}, newFakeFactory(nil))
+
+	if err := m.Send(context.Background(), "acct-no-token", provider.Draft{}); err == nil {
+		t.Fatal("Send: expected error when there's no token yet, got nil")
+	}
+}
+
+func TestManagerSendProviderError(t *testing.T) {
+	keyring.MockInit()
+	if err := auth.SaveToken("acct-1", &oauth2.Token{AccessToken: "at"}); err != nil {
+		t.Fatalf("SaveToken: %v", err)
+	}
+
+	store := openTestStore(t)
+	fp := &fakeProvider{account: "acct-1", sendErr: errors.New("smtp rejected")}
+	acc := config.Account{ID: "acct-1", Kind: "gmail"}
+	m := New(store, []config.Account{acc}, newFakeFactory(map[string]*fakeProvider{"acct-1": fp}))
+
+	if err := m.Send(context.Background(), "acct-1", provider.Draft{}); err == nil {
+		t.Fatal("Send: expected the provider's error to propagate, got nil")
 	}
 }
