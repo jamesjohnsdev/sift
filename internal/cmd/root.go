@@ -9,4 +9,6 @@ type CLI struct {
 	Version kong.VersionFlag `help:"Print version and exit"`
 
 	ManInstall ManInstallCmd `cmd:"" name:"man-install" help:"Install man page for local use"`
+
+	Account AccountCmd `cmd:"" help:"Manage mail accounts"`
 }
