@@ -10,6 +10,8 @@ type Keymap struct {
 	FocusLeft  []string
 	FocusRight []string
 	Quit       []string
+	Compose    []string
+	Reply      []string
 }
 
 func DefaultKeymap() Keymap {
@@ -21,6 +23,8 @@ func DefaultKeymap() Keymap {
 		FocusLeft:  []string{"h", "left"},
 		FocusRight: []string{"l", "right"},
 		Quit:       []string{"q", "ctrl+c"},
+		Compose:    []string{"c"},
+		Reply:      []string{"r"},
 	}
 }
 
@@ -47,6 +51,12 @@ func (k Keymap) overrideFrom(o Keymap) Keymap {
 	}
 	if len(o.Quit) > 0 {
 		k.Quit = o.Quit
+	}
+	if len(o.Compose) > 0 {
+		k.Compose = o.Compose
+	}
+	if len(o.Reply) > 0 {
+		k.Reply = o.Reply
 	}
 	return k
 }

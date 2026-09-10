@@ -123,6 +123,7 @@ func parseKeymap(tbl *lua.LTable) (Keymap, error) {
 	fields := map[string]*[]string{
 		"up": &k.Up, "down": &k.Down, "top": &k.Top, "bottom": &k.Bottom,
 		"focus_left": &k.FocusLeft, "focus_right": &k.FocusRight, "quit": &k.Quit,
+		"compose": &k.Compose, "reply": &k.Reply,
 	}
 	for key, dst := range fields {
 		keys, err := tableStringSlice(tbl, key)
