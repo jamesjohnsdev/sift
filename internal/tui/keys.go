@@ -15,6 +15,8 @@ type KeyMap struct {
 	FocusLeft  key.Binding
 	FocusRight key.Binding
 	Quit       key.Binding
+	Compose    key.Binding
+	Reply      key.Binding
 }
 
 func newKeyMap(km config.Keymap) KeyMap {
@@ -29,5 +31,7 @@ func newKeyMap(km config.Keymap) KeyMap {
 		FocusLeft:  bind(km.FocusLeft, "focus left"),
 		FocusRight: bind(km.FocusRight, "focus right"),
 		Quit:       bind(km.Quit, "quit"),
+		Compose:    bind(km.Compose, "compose"),
+		Reply:      bind(km.Reply, "reply"),
 	}
 }

@@ -73,5 +73,5 @@ func runTUI() error {
 	mgr := syncengine.New(store, cfg.Accounts, nil)
 	mgr.Start(ctx)
 
-	return tui.Run(cfg, store, mgr.Updates())
+	return tui.Run(cfg, store, mgr.Updates(), mgr.Send)
 }

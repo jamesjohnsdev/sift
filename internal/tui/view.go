@@ -15,16 +15,39 @@ func (m model) View() tea.View {
 		return tea.NewView("")
 	}
 
-	tags := m.renderTagsPane()
-	list := m.renderListPane()
-	preview := m.renderPreviewPane()
-
-	body := lipgloss.JoinHorizontal(lipgloss.Top, tags, list, preview)
-	content := lipgloss.JoinVertical(lipgloss.Left, body, m.renderStatusBar())
+	var content string
+	if m.mode == modeCompose {
+		content = m.renderCompose()
+	} else {
+		tags := m.renderTagsPane()
+		list := m.renderListPane()
+		preview := m.renderPreviewPane()
+		body := lipgloss.JoinHorizontal(lipgloss.Top, tags, list, preview)
+		content = lipgloss.JoinVertical(lipgloss.Left, body, m.renderStatusBar())
+	}
 
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
+}
+
+func (m model) renderCompose() string {
+	c := m.compose
+	var b strings.Builder
+
+	b.WriteString(m.styles.title.Render("Compose") + "\n\n")
+	fmt.Fprintf(&b, "%s %s\n", m.styles.muted.Render("To:     "), c.to.View())
+	fmt.Fprintf(&b, "%s %s\n", m.styles.muted.Render("Cc:     "), c.cc.View())
+	fmt.Fprintf(&b, "%s %s\n", m.styles.muted.Render("Bcc:    "), c.bcc.View())
+	fmt.Fprintf(&b, "%s %s\n\n", m.styles.muted.Render("Subject:"), c.subject.View())
+	b.WriteString(c.body.View() + "\n\n")
+
+	if c.status != "" {
+		b.WriteString(m.styles.muted.Render(c.status) + "\n")
+	}
+	b.WriteString(m.styles.muted.Render("tab/shift+tab: switch field  ctrl+s: send  esc: cancel"))
+
+	return m.styles.pane.Width(m.width).Height(m.height).Render(b.String())
 }
 
 // Fixed 20/30/50 column split; configurable layouts come later.
@@ -97,7 +120,7 @@ func (m model) renderStatusBar() string {
 	}[m.focus]
 
 	left := fmt.Sprintf(" sift  |  focus: %s", focusName)
-	right := "j/k move  gg/G top/bottom  h/l focus  q quit "
+	right := "j/k move  gg/G top/bottom  h/l focus  c compose  r reply  q quit "
 
 	gap := m.width - lipgloss.Width(left) - lipgloss.Width(right)
 	if gap < 1 {
