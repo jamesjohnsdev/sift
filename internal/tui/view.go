@@ -55,7 +55,7 @@ func (m model) renderTagsPane() string {
 	b.WriteString(m.styles.title.Render("Tags") + "\n")
 	for i, t := range m.tags {
 		line := t.name
-		if n := len(m.messages[t.name]); n > 0 {
+		if n := len(m.messages[tagKey{account: t.account, id: t.id}]); n > 0 {
 			line = fmt.Sprintf("%s (%d)", t.name, n)
 		}
 		if i == m.tagCursor {
@@ -69,13 +69,13 @@ func (m model) renderTagsPane() string {
 
 func (m model) renderListPane() string {
 	var b strings.Builder
-	b.WriteString(m.styles.title.Render(m.currentTag()) + "\n")
+	b.WriteString(m.styles.title.Render(m.currentTagName()) + "\n")
 	msgs := m.currentMessages()
 	if len(msgs) == 0 {
 		b.WriteString(m.styles.muted.Render("(empty)"))
 	}
 	for i, msg := range msgs {
-		line := fmt.Sprintf("%-20s %s", truncate(msg.from, 20), msg.subject)
+		line := fmt.Sprintf("%-20s %s", truncate(msg.From, 20), msg.Subject)
 		if i == m.listCursor {
 			b.WriteString(m.styles.selectedItem.Render(line) + "\n")
 		} else {
