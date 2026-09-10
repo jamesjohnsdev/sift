@@ -20,7 +20,7 @@ func TestCLIRegistersExpectedCommands(t *testing.T) {
 		t.Fatalf("kong.New() error = %v", err)
 	}
 
-	want := []string{"man-install"}
+	want := []string{"man-install", "account"}
 	got := make(map[string]bool)
 	for _, node := range k.Model.Children {
 		got[node.Name] = true
