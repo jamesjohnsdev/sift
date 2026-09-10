@@ -31,11 +31,19 @@ func Authenticate(ctx context.Context, cfg ProviderConfig, openBrowser func(url 
 		return nil, fmt.Errorf("start callback listener: %w", err)
 	}
 
+	redirectHost := cfg.RedirectHost
+	if redirectHost == "" {
+		redirectHost = "127.0.0.1"
+	}
+
 	oconf := &oauth2.Config{
-		ClientID:    cfg.ClientID,
-		Endpoint:    cfg.Endpoint,
-		Scopes:      cfg.Scopes,
-		RedirectURL: fmt.Sprintf("http://127.0.0.1:%d/callback", ln.Addr().(*net.TCPAddr).Port),
+		ClientID: cfg.ClientID,
+		Endpoint: cfg.Endpoint,
+		Scopes:   cfg.Scopes,
+		// No path: Microsoft's public-client wildcard-port redirect URI
+		// is registered as exactly "http://localhost" and only matches a
+		// bare "http://localhost:{port}" at runtime, no path component.
+		RedirectURL: fmt.Sprintf("http://%s:%d", redirectHost, ln.Addr().(*net.TCPAddr).Port),
 	}
 
 	type callbackResult struct {
@@ -46,7 +54,7 @@ func Authenticate(ctx context.Context, cfg ProviderConfig, openBrowser func(url 
 	results := make(chan callbackResult, 1)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		switch {
 		case q.Get("error") != "":

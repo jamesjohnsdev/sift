@@ -80,6 +80,60 @@ func TestAuthenticateSuccess(t *testing.T) {
 	}
 }
 
+// TestRedirectURIHasNoPathAndHonorsRedirectHost guards against a real bug:
+// Microsoft's public-client wildcard-port redirect URI is registered as
+// exactly "http://localhost" and only matches a bare "http://localhost:{port}"
+// at runtime, no path - unlike Google, which requires the literal IP
+// "127.0.0.1" and doesn't care about path. A shared hardcoded host/path
+// broke real Outlook auth (AADSTS50011 redirect URI mismatch) even though
+// every other test here passed, since the fake browser doesn't check host
+// or path, only that redirect_uri round-trips.
+func TestRedirectURIHasNoPathAndHonorsRedirectHost(t *testing.T) {
+	tokenSrv := fakeTokenServer(t)
+	defer tokenSrv.Close()
+
+	for _, tc := range []struct {
+		name string
+		cfg  ProviderConfig
+		host string
+	}{
+		{"gmail-style config", Gmail("client-id"), "127.0.0.1"},
+		{"outlook-style config", Outlook("client-id"), "localhost"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := tc.cfg
+			cfg.Endpoint.TokenURL = tokenSrv.URL
+
+			var gotRedirect string
+			browser := func(authURL string) error {
+				u, err := url.Parse(authURL)
+				if err != nil {
+					return err
+				}
+				gotRedirect = u.Query().Get("redirect_uri")
+				return fakeBrowser(t, url.Values{"code": {"fake-code"}})(authURL)
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if _, err := Authenticate(ctx, cfg, browser); err != nil {
+				t.Fatalf("Authenticate: %v", err)
+			}
+
+			ru, err := url.Parse(gotRedirect)
+			if err != nil {
+				t.Fatalf("parse redirect_uri %q: %v", gotRedirect, err)
+			}
+			if ru.Hostname() != tc.host {
+				t.Fatalf("redirect_uri host = %q, want %q (redirect_uri: %s)", ru.Hostname(), tc.host, gotRedirect)
+			}
+			if ru.Path != "" {
+				t.Fatalf("redirect_uri path = %q, want empty (redirect_uri: %s)", ru.Path, gotRedirect)
+			}
+		})
+	}
+}
+
 func TestAuthenticateDenied(t *testing.T) {
 	cfg := ProviderConfig{
 		ClientID: "test-client",
