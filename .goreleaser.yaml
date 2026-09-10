@@ -29,20 +29,20 @@ archives:
         formats:
           - zip
     files:
-      - src: .man/man1/bag.1
-        dst: man/man1/bag.1
+      - src: .man/man1/sift.1
+        dst: man/man1/sift.1
 
 nfpms:
-  - package_name: bag
-    homepage: https://github.com/jamesjohnsdev/bag
-    description: A simple, fast and declarative way to manage installed binaries across your system
+  - package_name: sift
+    homepage: https://github.com/jamesjohnsdev/sift
+    description: A TUI email client for Gmail and Outlook
     maintainer: James Johns <192176108+jamesjohnsdev@users.noreply.github.com>
     license: MIT
     formats:
       - deb
     contents:
-      - src: .man/man1/bag.1
-        dst: /usr/share/man/man1/bag.1
+      - src: .man/man1/sift.1
+        dst: /usr/share/man/man1/sift.1
 
 checksum:
   name_template: checksums.txt
