@@ -16,8 +16,11 @@ import (
 	"github.com/jamesjohnsdev/sift/internal/storage"
 )
 
-func Run(cfg config.Config, store *storage.Store) error {
-	m, err := newModel(cfg, store)
+// Run starts the TUI. updates, if non-nil, receives a pulse whenever
+// background sync writes new data to storage, so the running program
+// reloads instead of only ever showing what was there at startup.
+func Run(cfg config.Config, store *storage.Store, updates <-chan struct{}) error {
+	m, err := newModel(cfg, store, updates)
 	if err != nil {
 		return err
 	}
@@ -37,6 +40,9 @@ type model struct {
 	keys   KeyMap
 	styles styles
 
+	store   *storage.Store
+	updates <-chan struct{}
+
 	tags     []tag
 	messages map[tagKey][]provider.Message
 
@@ -51,7 +57,7 @@ type model struct {
 	height int
 }
 
-func newModel(cfg config.Config, store *storage.Store) (model, error) {
+func newModel(cfg config.Config, store *storage.Store, updates <-chan struct{}) (model, error) {
 	tags, messages, err := loadData(context.Background(), store)
 	if err != nil {
 		return model{}, err
@@ -60,6 +66,8 @@ func newModel(cfg config.Config, store *storage.Store) (model, error) {
 	m := model{
 		keys:     newKeyMap(cfg.Keymap),
 		styles:   newStyles(cfg.Theme),
+		store:    store,
+		updates:  updates,
 		tags:     tags,
 		messages: messages,
 		focus:    focusTags,
@@ -69,8 +77,26 @@ func newModel(cfg config.Config, store *storage.Store) (model, error) {
 	return m, nil
 }
 
+// refreshMsg means the sync engine wrote new data to storage; reload it.
+type refreshMsg struct{}
+
+// listenForUpdates blocks on m.updates and turns the next pulse into a
+// refreshMsg. Bubble Tea commands fire once, so this is re-issued after
+// every refreshMsg to keep listening for as long as the program runs.
+func listenForUpdates(updates <-chan struct{}) tea.Cmd {
+	if updates == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		if _, ok := <-updates; !ok {
+			return nil
+		}
+		return refreshMsg{}
+	}
+}
+
 func (m model) Init() tea.Cmd {
-	return nil
+	return listenForUpdates(m.updates)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -86,8 +112,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+
+	case refreshMsg:
+		m.reload()
+		return m, listenForUpdates(m.updates)
 	}
 	return m, nil
+}
+
+// reload re-reads tags and messages from storage, trying to keep the
+// current tag selected (by account+tag id, since the tag list is rebuilt
+// fresh and may reorder or grow) rather than jumping back to the top.
+func (m *model) reload() {
+	prev := m.currentTagKey()
+
+	tags, messages, err := loadData(context.Background(), m.store)
+	if err != nil {
+		return
+	}
+	m.tags = tags
+	m.messages = messages
+
+	m.tagCursor = 0
+	for i, t := range tags {
+		if t.account == prev.account && t.id == prev.id {
+			m.tagCursor = i
+			break
+		}
+	}
+	m.listCursor = clampMin0(clamp(m.listCursor, 0, len(m.currentMessages())-1))
+	m.syncPreview()
 }
 
 func (m model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
