@@ -4,15 +4,42 @@ import (
 	"context"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/jamesjohnsdev/sift/internal/config"
 	"github.com/jamesjohnsdev/sift/internal/provider"
 )
+
+// TestWindowSizeMsgBeforeComposeOpenedDoesNotPanic guards against a real
+// crash: WindowSizeMsg used to unconditionally resize m.compose, but
+// m.compose is only actually constructed (via newComposeModel/
+// newReplyModel) once compose is opened - resizing the zero-value
+// composeModel before that panicked inside textarea's SetWidth on every
+// single startup, since WindowSizeMsg fires before any key is ever
+// pressed.
+func TestWindowSizeMsgBeforeComposeOpenedDoesNotPanic(t *testing.T) {
+	store := openTestStore(t)
+	m, err := newModel(config.Default(), store, nil, nil)
+	if err != nil {
+		t.Fatalf("newModel: %v", err)
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Update(WindowSizeMsg) panicked before compose was ever opened: %v", r)
+		}
+	}()
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	if m2 == nil {
+		t.Fatal("Update returned a nil model")
+	}
+}
 
 func TestReloadPicksUpNewDataAndPreservesSelection(t *testing.T) {
 	store := openTestStore(t)
 	seedAccountWithInboxAndSent(t, store, "acct-1", "me@example.com")
 
-	m, err := newModel(config.Default(), store, nil)
+	m, err := newModel(config.Default(), store, nil, nil)
 	if err != nil {
 		t.Fatalf("newModel: %v", err)
 	}
