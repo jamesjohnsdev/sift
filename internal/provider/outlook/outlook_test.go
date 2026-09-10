@@ -102,6 +102,36 @@ func TestMessagesPaginatesViaNextLink(t *testing.T) {
 	}
 }
 
+// TestMessagesIncludesBodyWithoutFollowUpFetch guards against a real bug:
+// Messages (the list endpoint, used for initial sync) used to select only
+// bodyPreview, not body, so every message synced on startup showed a blank
+// preview until Watch happened to re-fetch it individually via Message.
+// Graph's $select supports body on list endpoints too, so this must come
+// back in the same call - no second request to this handler is registered,
+// so a regression back to a follow-up fetch would 404 here.
+func TestMessagesIncludesBodyWithoutFollowUpFetch(t *testing.T) {
+	p := newTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/mailFolders/inbox-id/messages" {
+			t.Fatalf("unexpected path %s (body must come from the list call, not a follow-up fetch)", r.URL.Path)
+		}
+		writeJSON(t, w, map[string]any{"value": []map[string]any{
+			{
+				"id":      "m1",
+				"subject": "Q3 roadmap",
+				"body":    map[string]string{"contentType": "html", "content": "<p>hi</p>"},
+			},
+		}})
+	}))
+
+	page, err := p.Messages(context.Background(), "inbox-id", "")
+	if err != nil {
+		t.Fatalf("Messages: %v", err)
+	}
+	if len(page.Messages) != 1 || page.Messages[0].BodyHTML != "<p>hi</p>" {
+		t.Fatalf("Messages = %+v, want BodyHTML populated from the list call", page.Messages)
+	}
+}
+
 func TestMessageIncludesBodyAndAttachments(t *testing.T) {
 	p := newTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
