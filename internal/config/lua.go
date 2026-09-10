@@ -81,6 +81,36 @@ func parseTheme(tbl *lua.LTable) (Theme, error) {
 	return t, nil
 }
 
+// parseAccounts reads an array of account tables, e.g.
+// { { id = "work", kind = "gmail", email = "me@x.com", client_id = "..." } }.
+func parseAccounts(tbl *lua.LTable) ([]Account, error) {
+	var accounts []Account
+	var rangeErr error
+	tbl.ForEach(func(_, v lua.LValue) {
+		if rangeErr != nil {
+			return
+		}
+		t, ok := v.(*lua.LTable)
+		if !ok {
+			rangeErr = fmt.Errorf("accounts entries must be tables, got %s", v.Type())
+			return
+		}
+
+		a := Account{}
+		id, ok := tableString(t, "id")
+		if !ok {
+			rangeErr = fmt.Errorf("account missing required field id")
+			return
+		}
+		a.ID = id
+		a.Kind, _ = tableString(t, "kind")
+		a.Email, _ = tableString(t, "email")
+		a.ClientID, _ = tableString(t, "client_id")
+		accounts = append(accounts, a)
+	})
+	return accounts, rangeErr
+}
+
 func parseKeymap(tbl *lua.LTable) (Keymap, error) {
 	var k Keymap
 	fields := map[string]*[]string{
