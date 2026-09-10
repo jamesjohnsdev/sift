@@ -78,6 +78,21 @@ func TestLoadKeymapOverridesOnlyGivenActions(t *testing.T) {
 	}
 }
 
+func TestLoadKeymapComposeAndReply(t *testing.T) {
+	path := writeInit(t, `return { keymap = { compose = {"n"}, reply = {"shift+r"} } }`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(cfg.Keymap.Compose) != 1 || cfg.Keymap.Compose[0] != "n" {
+		t.Fatalf("Keymap.Compose = %v, want [n]", cfg.Keymap.Compose)
+	}
+	if len(cfg.Keymap.Reply) != 1 || cfg.Keymap.Reply[0] != "shift+r" {
+		t.Fatalf("Keymap.Reply = %v, want [shift+r]", cfg.Keymap.Reply)
+	}
+}
+
 func TestLoadInvalidLuaReturnsDefaultAndError(t *testing.T) {
 	path := writeInit(t, `this is not valid lua {{{`)
 
