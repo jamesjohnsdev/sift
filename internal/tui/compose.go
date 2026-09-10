@@ -96,7 +96,9 @@ func (c *composeModel) applySize(width, height int) {
 	c.cc.SetWidth(fieldWidth)
 	c.bcc.SetWidth(fieldWidth)
 	c.subject.SetWidth(fieldWidth)
-	c.body.SetWidth(max(width-4, 10))
+	// Body is split with a live preview alongside it (see renderCompose),
+	// so it only gets half the width rather than the full body area.
+	c.body.SetWidth(max(width/2-4, 10))
 	c.body.SetHeight(max(height-12, 3))
 }
 
