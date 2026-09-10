@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.4](https://github.com/jamesjohnsdev/sift/compare/v0.1.3...v0.1.4) (2026-09-10)
+
+
+### Features
+
+* add live Markdown preview to compose ([271dfe0](https://github.com/jamesjohnsdev/sift/commit/271dfe015340fff1bf8bac208f05bb7355b47e40))
+* add theme-aware Markdown/HTML content renderer ([a9b5b46](https://github.com/jamesjohnsdev/sift/commit/a9b5b464ffada09c36e885d357384849301b5b00))
+* render message preview through the content renderer ([5da26a6](https://github.com/jamesjohnsdev/sift/commit/5da26a6852b7b3e0ca1536ad50fdf8f44aab2c62))
+
 ## [0.1.3](https://github.com/jamesjohnsdev/sift/compare/v0.1.2...v0.1.3) (2026-09-10)
 
 
