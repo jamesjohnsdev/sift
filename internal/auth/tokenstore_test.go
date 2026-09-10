@@ -5,13 +5,11 @@ import (
 
 	"github.com/zalando/go-keyring"
 	"golang.org/x/oauth2"
-
-	"github.com/jamesjohnsdev/sift/internal/provider"
 )
 
 func TestTokenStoreRoundTrip(t *testing.T) {
 	keyring.MockInit()
-	account := provider.AccountID("acct-1")
+	account := "acct-1"
 
 	got, err := LoadToken(account)
 	if err != nil {
