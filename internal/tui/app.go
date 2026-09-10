@@ -1,9 +1,10 @@
 // Package tui implements the Bubble Tea shell for sift: a three-pane
-// tags/message-list/preview layout with vim-style navigation. Renders
-// placeholder data only — no provider, storage, or config wiring yet.
+// tags/message-list/preview layout with vim-style navigation over data
+// loaded from the local storage.Store.
 package tui
 
 import (
+	"context"
 	"fmt"
 
 	"charm.land/bubbles/v2/key"
@@ -11,10 +12,16 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/jamesjohnsdev/sift/internal/config"
+	"github.com/jamesjohnsdev/sift/internal/provider"
+	"github.com/jamesjohnsdev/sift/internal/storage"
 )
 
-func Run(cfg config.Config) error {
-	_, err := tea.NewProgram(newModel(cfg)).Run()
+func Run(cfg config.Config, store *storage.Store) error {
+	m, err := newModel(cfg, store)
+	if err != nil {
+		return err
+	}
+	_, err = tea.NewProgram(m).Run()
 	return err
 }
 
@@ -31,7 +38,7 @@ type model struct {
 	styles styles
 
 	tags     []tag
-	messages map[string][]message
+	messages map[tagKey][]provider.Message
 
 	focus      focus
 	tagCursor  int
@@ -44,20 +51,22 @@ type model struct {
 	height int
 }
 
-func newModel(cfg config.Config) model {
-	tags := placeholderTags()
-	msgs := placeholderMessages()
+func newModel(cfg config.Config, store *storage.Store) (model, error) {
+	tags, messages, err := loadData(context.Background(), store)
+	if err != nil {
+		return model{}, err
+	}
 
 	m := model{
 		keys:     newKeyMap(cfg.Keymap),
 		styles:   newStyles(cfg.Theme),
 		tags:     tags,
-		messages: msgs,
+		messages: messages,
 		focus:    focusTags,
 		preview:  viewport.New(),
 	}
 	m.syncPreview()
-	return m
+	return m, nil
 }
 
 func (m model) Init() tea.Cmd {
@@ -182,15 +191,23 @@ func (m *model) moveBottom() {
 	}
 }
 
-func (m *model) currentTag() string {
+func (m *model) currentTagName() string {
 	if len(m.tags) == 0 {
 		return ""
 	}
 	return m.tags[m.tagCursor].name
 }
 
-func (m *model) currentMessages() []message {
-	return m.messages[m.currentTag()]
+func (m *model) currentTagKey() tagKey {
+	if len(m.tags) == 0 {
+		return tagKey{}
+	}
+	t := m.tags[m.tagCursor]
+	return tagKey{account: t.account, id: t.id}
+}
+
+func (m *model) currentMessages() []provider.Message {
+	return m.messages[m.currentTagKey()]
 }
 
 func (m *model) syncPreview() {
@@ -198,9 +215,13 @@ func (m *model) syncPreview() {
 	m.preview.SetContent("")
 	if m.listCursor < len(msgs) {
 		msg := msgs[m.listCursor]
-		body := fmt.Sprintf("From: %s\nSubject: %s\nDate: %s\n\n%s",
-			msg.from, msg.subject, msg.date, msg.body)
-		m.preview.SetContent(body)
+		body := msg.BodyText
+		if body == "" {
+			body = msg.BodyHTML
+		}
+		content := fmt.Sprintf("From: %s\nSubject: %s\nDate: %s\n\n%s",
+			msg.From, msg.Subject, msg.Date.Format("2006-01-02 15:04"), body)
+		m.preview.SetContent(content)
 	}
 	m.preview.GotoTop()
 }
